@@ -1,0 +1,68 @@
+# 自我实现PR,ROC曲线AUC的值
+import numpy as np
+import matplotlib.pyplot as plt
+
+y_true = [1, 0, 0, 1, 0, 0, 1, 1, 0, 0]
+y_score = [0.9, 0.4, 0.2, 0.6, 0.5, 0.4, 0.7, 0.4, 0.65, 0.35]
+y_score_sorted = sorted(y_score, reverse=True)
+
+forecasting_matrix = np.zeros((10, 10), dtype=int)
+i = 0
+for threshold in y_score_sorted:
+    for j in range(len(y_score)):
+        if y_score[j] >= threshold:
+            forecasting_matrix[i][j] = 1
+    i += 1
+
+confusion_matrix = np.zeros((10, 8), dtype=float)
+for i in range(10):
+    for j in range(10):
+        if y_true[j] == 1 and forecasting_matrix[i][j] == 1:
+            confusion_matrix[i][0] += 1
+        if y_true[j] == 1 and forecasting_matrix[i][j] == 0:
+            confusion_matrix[i][1] += 1
+        if y_true[j] == 0 and forecasting_matrix[i][j] == 1:
+            confusion_matrix[i][2] += 1
+        if y_true[j] == 0 and forecasting_matrix[i][j] == 0:
+            confusion_matrix[i][3] += 1
+
+    if confusion_matrix[i][0] + confusion_matrix[i][2] != 0:
+        confusion_matrix[i][4] = confusion_matrix[i][0] / (confusion_matrix[i][0] + confusion_matrix[i][2])
+    if confusion_matrix[i][0] + confusion_matrix[i][1] != 0:
+        confusion_matrix[i][5] = confusion_matrix[i][0] / (confusion_matrix[i][0] + confusion_matrix[i][1])
+    if confusion_matrix[i][2] + confusion_matrix[i][3] != 0:
+        confusion_matrix[i][7] = confusion_matrix[i][2] / (confusion_matrix[i][2] + confusion_matrix[i][3])
+
+precision = confusion_matrix[:, 4]
+recall = confusion_matrix[:, 5]
+fpr = confusion_matrix[:, 7]
+tpr = recall
+
+auc_value = 0
+for i in range(1, len(fpr)):
+    auc_value += (fpr[i] - fpr[i - 1]) * (tpr[i] + tpr[i - 1]) / 2
+
+fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+ax[0].set_title('PR Curve')
+ax[0].plot(recall, precision, label='PR', marker='o')
+ax[0].set_xlim(0, 1)
+ax[0].set_ylim(0, 1)
+ax[0].set_xlabel("Recall")
+ax[0].set_ylabel("Precision")
+ax[0].legend()
+
+ax[1].set_title('ROC Curve')
+ax[1].plot(fpr, tpr, label=f'ROC (AUC = {auc_value:.2f})', marker='o')
+ax[1].set_xlim(0, 1)
+ax[1].set_ylim(0, 1)
+ax[1].set_xlabel("FPR")
+ax[1].set_ylabel("TPR")
+ax[1].legend()
+
+ax[2].text(0.5, 0.5, f'AUC = {auc_value:.2f}', fontsize=20, ha='center', va='center')
+ax[2].set_title('AUC Value')
+ax[2].axis('off')
+
+plt.tight_layout()
+plt.show()

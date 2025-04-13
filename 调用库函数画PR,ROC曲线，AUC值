@@ -1,0 +1,45 @@
+# 库函数实现PR,ROC曲线AUC的值
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import precision_recall_curve, roc_curve, auc
+
+# 数据
+y_true = [1, 0, 0, 1, 0, 0, 1, 1, 0, 0]
+y_score = [0.9, 0.4, 0.2, 0.6, 0.5, 0.4, 0.7, 0.4, 0.65, 0.35]
+
+# 计算 PR 曲线
+precision, recall, _ = precision_recall_curve(y_true, y_score)
+
+# 计算 ROC 曲线
+fpr, tpr, _ = roc_curve(y_true, y_score)
+roc_auc = auc(fpr, tpr)
+
+# 创建画布
+fig, ax = plt.subplots(1, 3, figsize=(18, 6))
+
+# 绘制 PR 曲线
+ax[0].set_title('PR Curve')
+ax[0].plot(recall, precision, label='PR', marker='o')
+ax[0].set_xlim(0, 1)
+ax[0].set_ylim(0, 1)
+ax[0].set_xlabel("Recall")
+ax[0].set_ylabel("Precision")
+ax[0].legend()
+
+# 绘制 ROC 曲线
+ax[1].set_title('ROC Curve')
+ax[1].plot(fpr, tpr, label=f'ROC (AUC = {roc_auc:.2f})', marker='o')
+ax[1].set_xlim(0, 1)
+ax[1].set_ylim(0, 1)
+ax[1].set_xlabel("FPR")
+ax[1].set_ylabel("TPR")
+ax[1].legend()
+
+# 显示 AUC 值
+ax[2].text(0.5, 0.5, f'AUC = {roc_auc:.2f}', fontsize=20, ha='center', va='center')
+ax[2].set_title('AUC Value')
+ax[2].axis('off')
+
+# 调整布局并显示图表
+plt.tight_layout()
+plt.show()

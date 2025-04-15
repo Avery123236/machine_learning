@@ -1,0 +1,186 @@
+# 微平均采用采样取点的值求平均,插值运算
+import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
+# 真实标签和预测分数
+true = [[0, 0, 1],
+        [0, 1, 0],
+        [1, 0, 0],
+        [0, 0, 1],
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 1, 0]]
+
+score = [[0.1, 0.2, 0.7],
+         [0.1, 0.6, 0.3],
+         [0.5, 0.2, 0.3],
+         [0.1, 0.1, 0.8],
+         [0.4, 0.2, 0.4],
+         [0.6, 0.3, 0.1],
+         [0.4, 0.2, 0.4],
+         [0.4, 0.1, 0.5],
+         [0.1, 0.1, 0.8],
+         [0.1, 0.8, 0.1]]
+
+# 转化为 NumPy 数组
+true_array = np.array(true)
+score_array = np.array(score)
+num_classes = true_array.shape[1]
+colors = ['blue', 'green', 'red']
+plt.figure(figsize=(12, 6))
+all_fpr = []
+all_tpr = []
+
+# 计算每个类别的 ROC 曲线
+for i in range(num_classes):
+    true_class = true_array[:, i]
+    score_class = score_array[:, i]
+
+    sorted_indices = np.argsort(-score_class)
+    true_sorted = true_class[sorted_indices]
+    score_sorted = score_class[sorted_indices]
+
+    tp = 0
+    fp = 0
+    fn = np.sum(true_sorted)
+    tn = len(true_sorted) - fn
+    tpr_list = [0]
+    fpr_list = [0]
+    for j in range(len(true_sorted)):
+        if true_sorted[j] == 1:
+            tp += 1
+            fn -= 1
+        else:
+            fp += 1
+            tn -= 1
+        tpr = tp / (tp + fn) if (tp + fn) > 0 else 0
+        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
+        tpr_list.append(tpr)
+        fpr_list.append(fpr)
+
+
+    all_fpr.append(fpr_list)
+    all_tpr.append(tpr_list)
+    plt.plot(fpr_list, tpr_list, color=colors[i], label=f'Class {i}')
+
+# 计算微平均曲线
+micro_fpr = np.linspace(0, 1, 100)
+micro_tpr = []
+
+for fpr_val in micro_fpr:
+    # 找到最接近 fpr_val 的索引，并取对应的 tpr 值
+    tpr_sum = 0
+    for i in range(num_classes):
+        idx = np.argmin(np.abs(np.array(all_fpr[i]) - fpr_val))
+        tpr_sum += all_tpr[i][idx]
+    micro_tpr.append(tpr_sum / num_classes)
+
+# 绘制微平均曲线
+plt.plot(micro_fpr, micro_tpr, color='black', linestyle='--', label='Micro-Average')
+
+
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', label='Random Guess')
+plt.title('ROC Curves for Each Class and Micro-Average')
+plt.xlabel('False Positive Rate (FPR)')
+plt.ylabel('True Positive Rate (TPR)')
+plt.legend(loc='lower right')
+
+# 显示图形
+plt.tight_layout()
+plt.show()
+
+
+'''
+# 采用微平均为全局平均
+import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+
+# 真实标签和预测分数
+true = [[0, 0, 1],
+        [0, 1, 0],
+        [1, 0, 0],
+        [0, 0, 1],
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 1, 0]]
+
+score = [[0.1, 0.2, 0.7],
+         [0.1, 0.6, 0.3],
+         [0.5, 0.2, 0.3],
+         [0.1, 0.1, 0.8],
+         [0.4, 0.2, 0.4],
+         [0.6, 0.3, 0.1],
+         [0.4, 0.2, 0.4],
+         [0.4, 0.1, 0.5],
+         [0.1, 0.1, 0.8],
+         [0.1, 0.8, 0.1]]
+
+# 转化为一维数组
+true_ravel = np.ravel(np.array(true))
+score_ravel = np.ravel(np.array(score))
+
+# 按照预测分数排序
+sorted_indices = np.argsort(-score_ravel)
+true_sorted = true_ravel[sorted_indices]
+score_sorted = score_ravel[sorted_indices]
+
+num_samples = len(true_ravel)
+tp = 0
+fp = 0
+fn = np.sum(true_ravel)
+tn = num_samples - fn
+
+precision_list = []
+recall_list = []
+tpr_list = [0]
+fpr_list = [0]
+
+
+for i in range(num_samples):
+    if true_sorted[i] == 1:
+        tp += 1
+        fn -= 1
+    else:
+        fp += 1
+        tn -= 1
+
+    # 计算当前的 TPR 和 FPR
+    tpr = tp / (tp + fn) if (tp + fn) > 0 else 0
+    fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
+    tpr_list.append(tpr)
+    fpr_list.append(fpr)
+
+# 计算 AUC 值
+auc_value = 0
+for i in range(1, len(fpr_list)):
+    auc_value += (fpr_list[i] - fpr_list[i - 1]) * (tpr_list[i] + tpr_list[i - 1]) / 2
+
+# 创建画布
+fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+
+# 绘制 ROC 曲线
+ax[0].set_title('ROC Curve (Micro-Averaging)')
+ax[0].plot(fpr_list, tpr_list, label=f'ROC (AUC = {auc_value:.2f})', marker='o')
+ax[0].set_xlim(0, 1)
+ax[0].set_ylim(0, 1)
+ax[0].set_xlabel("FPR")
+ax[0].set_ylabel("TPR")
+ax[0].legend()
+
+# 显示 AUC
+ax[1].text(0.5, 0.5, f'AUC = {auc_value:.2f}', fontsize=20, ha='center', va='center')
+ax[1].set_title('AUC Value')
+ax[1].axis('off')
+plt.tight_layout()
+plt.show()
+'''
